@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: EcomCartManagementSystem
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+  cache:
+    type: redis
+  data:
+    redis:
+      host: public-redis-336e892a-roychowdhuryankan2001-4094.a.aivencloud.com
+      port: 25408
+      username: default
+      password: AVNS_udPR9JueomtCT8SFQVK
+      ssl:
+        enabled: true
+  datasource:
+    url: jdbc:mysql://public-ankan-mysql-roychowdhuryankan2001-4094.a.aivencloud.com:25407/cartdb_dev
+    username: avnadmin
+    password: AVNS_dBAHhcBSQTsbu2BeZPD
+  flyway:
+    baseline-on-migrate: true
+server:
+  port: 8282
