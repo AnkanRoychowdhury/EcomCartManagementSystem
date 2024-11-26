@@ -15,4 +15,7 @@ public interface CartService {
     void deleteCart(String cartId);
     CartDto updateCart(String cartId, UpdateCartDto cartDto) throws Exception;
 
+    CartDto saveCartInRedis(CartDto cartDto) throws Exception;
+    CartDto getCartFromRedis(String cartId) throws Exception;
+
 }

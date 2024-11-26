@@ -3,7 +3,10 @@ package tech.ankanroychowdhury.ecomcartmanagementsystem.controllers;
 import com.sun.jdi.request.DuplicateRequestException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -34,12 +37,17 @@ public class CartController {
     @PostMapping
     public ResponseEntity<ResponseDto<CartDto>> saveCart(@Valid @RequestBody CartDto cartDto) {
         try {
-            Cart cart = this.cartService.saveCart(cartDto);
+            Object savedCart;
+            if(cartDto.getUserId() == null) {
+                savedCart = this.cartService.saveCartInRedis(cartDto);
+            }else {
+                savedCart = this.cartToCartDtoAdapter.convertToCartDto(this.cartService.saveCart(cartDto));
+            }
             return new ResponseEntity<>(
                     ResponseDto.<CartDto>builder()
                     .status(HttpStatus.OK)
                     .message("Cart created successfully")
-                    .data(this.cartToCartDtoAdapter.convertToCartDto(cart))
+                    .data((CartDto) savedCart)
                     .errors(null)
                     .build(),
                     HttpStatus.OK
@@ -58,11 +66,13 @@ public class CartController {
     }
 
     @GetMapping
-    @Cacheable(value = "carts", key = "#cartId")
-    public ResponseEntity<ResponseDto<CartDto>> getCartById(@RequestParam String cartId) {
+    public ResponseEntity<ResponseDto<CartDto>> getCartById(@RequestParam String cartId) throws Exception {
         try {
+
+            // fetch cart from redis for guest user
+            CartDto guestCart = this.cartService.getCartFromRedis(cartId);
             // Fetch the cart by ID
-            CartDto cartDto = this.cartService.getCartById(cartId);
+            CartDto cartDto = guestCart != null ? guestCart : this.cartService.getCartById(cartId);
 
             // Build success response
             ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
@@ -71,6 +81,15 @@ public class CartController {
                     .data(cartDto)
                     .build();
 
+            return ResponseEntity.ok(response);
+        }
+        catch(RedisSystemException e){
+            CartDto cartDto = this.cartService.getCartById(cartId);
+            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
+                    .status(HttpStatus.OK)
+                    .message("Cart retrieved successfully")
+                    .data(cartDto)
+                    .build();
             return ResponseEntity.ok(response);
         }
         catch (EntityNotFoundException e) {
@@ -85,6 +104,7 @@ public class CartController {
         }
         catch (Exception e) {
             // Handle general exceptions
+            e.printStackTrace();
             ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .message("An error occurred while retrieving the cart")
@@ -159,7 +179,7 @@ public class CartController {
         }
     }
 
-    @PatchMapping
+    @PutMapping
     public ResponseEntity<ResponseDto<CartDto>> updateCart(@RequestParam String cartId, @Valid @RequestBody UpdateCartDto updateCartDto){
         try {
             CartDto cartDto = this.cartService.updateCart(cartId, updateCartDto);

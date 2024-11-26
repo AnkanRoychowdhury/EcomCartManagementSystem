@@ -8,6 +8,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.io.Serializable;
 import java.util.Date;
 
 @Builder
@@ -17,7 +18,7 @@ import java.util.Date;
 @Setter
 @EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
-public class CartItem {
+public class CartItem implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

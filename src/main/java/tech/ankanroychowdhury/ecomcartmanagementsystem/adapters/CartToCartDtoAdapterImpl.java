@@ -18,8 +18,6 @@ public class CartToCartDtoAdapterImpl implements CartToCartDtoAdapter {
                 .cartId(cart.getCartId())
                 .userId(cart.getUserId())
                 .cartItems(convertToCartItemDtoList(cart.getCartItems()))
-                .createdAt(cart.getCreatedAt())
-                .updatedAt(cart.getUpdatedAt())
                 .build();
     }
 

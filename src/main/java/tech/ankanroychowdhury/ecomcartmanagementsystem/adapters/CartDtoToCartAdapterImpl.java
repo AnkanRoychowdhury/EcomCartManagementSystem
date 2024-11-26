@@ -24,12 +24,6 @@ public class CartDtoToCartAdapterImpl implements CartDtoToCartAdapter {
                     .userId(cartDto.getUserId() != null && !cartDto.getUserId().isEmpty()
                             ? cartDto.getUserId()
                             : null)
-                    .createdAt(cartDto.getCreatedAt() != null
-                            ? cartDto.getCreatedAt()
-                            : new Date())
-                    .updatedAt(cartDto.getUpdatedAt() != null
-                            ? cartDto.getUpdatedAt()
-                            : new Date())
                     .build();
 
             // Map CartItemDto to CartItem and set to Cart

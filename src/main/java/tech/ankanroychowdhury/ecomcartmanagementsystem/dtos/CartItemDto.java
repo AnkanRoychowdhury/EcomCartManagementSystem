@@ -1,8 +1,7 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.dtos;
 
 import jakarta.validation.constraints.*;
-import lombok.Builder;
-import lombok.Value;
+import lombok.*;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.CartItem;
 
 import java.io.Serializable;
@@ -11,8 +10,11 @@ import java.util.Date;
 /**
  * DTO for {@link CartItem}
  */
-@Value
 @Builder
+@AllArgsConstructor
+@RequiredArgsConstructor
+@Getter
+@Setter
 public class CartItemDto implements Serializable {
 
     @NotNull(message = "Product ID should not be empty")
