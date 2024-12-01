@@ -1,18 +1,21 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.controllers;
 
 import com.sun.jdi.request.DuplicateRequestException;
+import io.lettuce.core.RedisCommandExecutionException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.data.redis.RedisSystemException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import tech.ankanroychowdhury.ecomcartmanagementsystem.adapters.CartToCartDtoAdapter;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.ResponseDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.UpdateCartDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.services.CartService;
+
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -21,23 +24,22 @@ import java.util.List;
 public class CartController {
 
     private final CartService cartService;
-    private final CartToCartDtoAdapter cartToCartDtoAdapter;
+    private final RedisTemplate<String, Object> redisTemplate;
     private static final String CART_NOT_FOUND_MSG = "Cart not found";
 
-
-    public CartController(CartService cartService, CartToCartDtoAdapter cartToCartDtoAdapter) {
+    public CartController(CartService cartService, RedisTemplate<String, Object> redisTemplate) {
         this.cartService = cartService;
-        this.cartToCartDtoAdapter = cartToCartDtoAdapter;
+        this.redisTemplate = redisTemplate;
     }
 
     @PostMapping
     public ResponseEntity<ResponseDto<CartDto>> saveCart(@Valid @RequestBody CartDto cartDto) {
         try {
             CartDto savedCart;
-            if(cartDto.getUserId() == null) {
+            if(cartDto.getUserId() == null || cartDto.getUserId().isEmpty()) {
                 savedCart = this.cartService.saveCartInRedis(cartDto);
             }else {
-                savedCart = this.cartToCartDtoAdapter.convertToCartDto(this.cartService.saveCart(cartDto));
+                savedCart = this.cartService.saveCart(cartDto);
             }
             return new ResponseEntity<>(
                     ResponseDto.<CartDto>builder()
@@ -61,10 +63,34 @@ public class CartController {
         }
     }
 
+    @PostMapping("/merge/{userId}")
+    public ResponseEntity<ResponseDto<CartDto>> mergeCart(@RequestParam String cartId, @PathVariable String userId) throws Exception{
+        try {
+            CartDto guestCart = this.cartService.getCartFromRedis(cartId);
+            guestCart.setUserId(userId);
+            CartDto mergedCart = this.cartService.saveCart(guestCart);
+            redisTemplate.opsForValue().getAndDelete("cart:guest:"+cartId);
+            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
+                    .status(HttpStatus.CREATED)
+                    .message("Successful merging cart")
+                    .errors(new ArrayList<>())
+                    .data(mergedCart)
+                    .build();
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        }catch (RedisCommandExecutionException e) {
+            // Handle exceptions (e.g., cart not found)
+            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
+                    .status(HttpStatus.NOT_FOUND)
+                    .message(CART_NOT_FOUND_MSG)
+                    .errors(List.of(e.getMessage()))
+                    .build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        }
+    }
+
     @GetMapping
     public ResponseEntity<ResponseDto<CartDto>> getCartById(@RequestParam String cartId) throws Exception {
         try {
-
             // fetch cart from redis for guest user
             CartDto guestCart = this.cartService.getCartFromRedis(cartId);
             // Fetch the cart by ID
@@ -79,7 +105,7 @@ public class CartController {
 
             return ResponseEntity.ok(response);
         }
-        catch(RedisSystemException e){
+        catch(RedisCommandExecutionException e){
             CartDto cartDto = this.cartService.getCartById(cartId);
             ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
                     .status(HttpStatus.OK)
@@ -182,6 +208,7 @@ public class CartController {
                     .status(HttpStatus.OK)
                     .message("Successfully updated the cart")
                     .data(cartDto)
+                    .errors(new ArrayList<>())
                     .build();
             return ResponseEntity.ok(response);
         }

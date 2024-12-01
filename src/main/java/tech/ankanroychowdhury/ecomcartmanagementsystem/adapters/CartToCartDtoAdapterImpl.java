@@ -31,6 +31,7 @@ public class CartToCartDtoAdapterImpl implements CartToCartDtoAdapter {
     private CartItemDto convertToCartItemDto(CartItem cartItem) {
         // Map CartItem to CartItemDto
         return CartItemDto.builder()
+                .itemId(cartItem.getId())
                 .productId(cartItem.getProductId())
                 .quantity(cartItem.getQuantity())
                 .price(cartItem.getPrice())

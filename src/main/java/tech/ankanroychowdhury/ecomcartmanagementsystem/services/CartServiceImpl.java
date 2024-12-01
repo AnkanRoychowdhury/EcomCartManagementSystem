@@ -2,6 +2,7 @@ package tech.ankanroychowdhury.ecomcartmanagementsystem.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jdi.request.DuplicateRequestException;
+import io.lettuce.core.RedisCommandExecutionException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.data.redis.RedisSystemException;
@@ -52,12 +53,11 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public Cart saveCart(CartDto cartDto) throws Exception {
+    public CartDto saveCart(CartDto cartDto) throws Exception {
         try {
             Cart cart = this.cartAdapter.convertToCartFromCartDto(cartDto);
-            return this.cartRepository.save(cart);
+            return this.cartToCartDtoAdapter.convertToCartDto(this.cartRepository.save(cart));
         }catch(Exception e) {
-            e.printStackTrace();
             throw new Exception(
                     e.getMessage(),
                     e.getCause()
@@ -111,7 +111,11 @@ public class CartServiceImpl implements CartService {
 
     @Override
     public CartDto saveCartInRedis(CartDto cartDto) throws Exception {
-        return saveCartInRedisIn(cartDto);
+        try {
+            return saveCartInRedisIn(cartDto);
+        }catch (Exception e) {
+            throw new Exception(e.getMessage(), e.getCause());
+        }
     }
 
     private CartDto saveCartInRedisIn(CartDto cartDto) throws Exception {
@@ -124,19 +128,16 @@ public class CartServiceImpl implements CartService {
         // Serialize and save the CartDto object in Redis
         String serializedCart = objectMapper.writeValueAsString(cartDto);
         redisTemplate.opsForValue().set(cartKey, serializedCart, Duration.ofHours(1));
-
         return cartDto;
     }
 
     private CartDto getCartFromRedisIn(String cartId) throws Exception {
         String cartKey = "cart:guest:" + cartId;
-
         // Retrieve the serialized JSON string from Redis
         String serializedCart = (String) redisTemplate.opsForValue().get(cartKey);
         if (serializedCart == null) {
-            throw new RedisSystemException("Cart not found in Redis with ID: " + cartId, new EntityNotFoundException(cartId));
+            throw new RedisCommandExecutionException("Cart not found in Redis with ID: " + cartId);
         }
-
         // Deserialize the JSON string back into a CartDto object
         return objectMapper.readValue(serializedCart, CartDto.class);
     }

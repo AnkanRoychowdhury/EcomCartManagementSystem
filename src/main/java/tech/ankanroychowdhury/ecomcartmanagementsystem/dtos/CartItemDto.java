@@ -16,6 +16,8 @@ import java.io.Serializable;
 @Setter
 public class CartItemDto implements Serializable {
 
+    Long itemId;
+
     @NotNull(message = "Product ID should not be empty")
     @Size
     @NotEmpty(message = "Product ID should not be empty")

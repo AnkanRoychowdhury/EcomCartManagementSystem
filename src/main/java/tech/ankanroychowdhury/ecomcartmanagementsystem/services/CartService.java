@@ -9,7 +9,7 @@ import java.util.List;
 
 
 public interface CartService {
-    Cart saveCart(CartDto cartDto) throws Exception;
+    CartDto saveCart(CartDto cartDto) throws Exception;
     CartDto getCartById(String cartId) throws Exception;
     CartDto addItemsToCart(String cartId, List<CartItemDto> cartItemsDto) throws Exception;
     void deleteCart(String cartId);
@@ -17,5 +17,6 @@ public interface CartService {
 
     CartDto saveCartInRedis(CartDto cartDto) throws Exception;
     CartDto getCartFromRedis(String cartId) throws Exception;
+//    Cart mergeCart(CartDto cartDto) throws Exception;
 
 }

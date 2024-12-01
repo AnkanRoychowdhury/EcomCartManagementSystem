@@ -1,12 +1,16 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.dtos;
 
-import lombok.Builder;
-import lombok.Value;
+import lombok.*;
+
+import java.io.Serializable;
 import java.util.List;
 
-@Value
 @Builder
-public class UpdateCartDto {
+@AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+public class UpdateCartDto implements Serializable {
     String userId;
-    List<UpdateCartItemDto> cartItems;
+    transient List<UpdateCartItemDto> cartItems;
 }

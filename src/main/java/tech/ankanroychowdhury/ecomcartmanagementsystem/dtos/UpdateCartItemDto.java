@@ -4,12 +4,15 @@ package tech.ankanroychowdhury.ecomcartmanagementsystem.dtos;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
-import lombok.Builder;
-import lombok.Value;
+import lombok.*;
+
 import java.io.Serializable;
 
-@Value
 @Builder
+@AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
 public class UpdateCartItemDto implements Serializable {
     String productId;
 
