@@ -6,7 +6,6 @@ import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.Cart;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.CartItem;
 
 import java.util.ArrayList;
-import java.util.Date;
 
 @Component
 public class CartDtoToCartAdapterImpl implements CartDtoToCartAdapter {
@@ -28,8 +27,8 @@ public class CartDtoToCartAdapterImpl implements CartDtoToCartAdapter {
 
             // Map CartItemDto to CartItem and set to Cart
             if (cartDto.getCartItems() != null && !cartDto.getCartItems().isEmpty()) {
-                cartDto.getCartItems().forEach(cartItemDto -> {
-                    CartItem cartItem = this.cartItemDto.convertToCartItemFromCartItemDto(cartItemDto, cart);
+                cartDto.getCartItems().forEach(itemDto -> {
+                    CartItem cartItem = this.cartItemDto.convertToCartItemFromCartItemDto(itemDto, cart);
                     if(cart.getCartItems() == null || cart.getCartItems().isEmpty()){
                         cart.setCartItems(new ArrayList<>());
                         cart.getCartItems().add(cartItem);
@@ -39,7 +38,7 @@ public class CartDtoToCartAdapterImpl implements CartDtoToCartAdapter {
             }
             return cart;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to convert CartDto to Cart entity", e);
+            throw new RuntimeException("Failed to convert CartDto to Cart entity", e.getCause());
         }
     }
 }

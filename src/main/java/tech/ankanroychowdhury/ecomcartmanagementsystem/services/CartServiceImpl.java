@@ -34,7 +34,7 @@ public class CartServiceImpl implements CartService {
     private final CartItemDtoToCartItemAdapter cartItemDtoToCartItemAdapter;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
-    private Boolean isUpdated = false;
+    private boolean isUpdated = false;
 
     public CartServiceImpl(CartRepository cartRepository,
                            CartDtoToCartAdapter cartAdapter,

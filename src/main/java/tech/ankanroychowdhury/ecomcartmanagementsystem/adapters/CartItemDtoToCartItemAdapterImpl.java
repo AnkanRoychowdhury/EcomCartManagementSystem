@@ -1,23 +1,16 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.adapters;
 
 import org.springframework.stereotype.Component;
-import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.UpdateCartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.Cart;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.CartItem;
-import tech.ankanroychowdhury.ecomcartmanagementsystem.repositories.CartItemRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
 public class CartItemDtoToCartItemAdapterImpl implements CartItemDtoToCartItemAdapter {
-    private final CartItemRepository cartItemRepository;
-
-    public CartItemDtoToCartItemAdapterImpl(CartItemRepository cartItemRepository) {
-        this.cartItemRepository = cartItemRepository;
-    }
 
     @Override
     public CartItem convertToCartItemFromCartItemDto(CartItemDto cartItemDto, Cart cart) {

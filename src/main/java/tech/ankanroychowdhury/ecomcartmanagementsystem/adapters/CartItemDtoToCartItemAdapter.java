@@ -1,7 +1,5 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.adapters;
 
-
-import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.UpdateCartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.Cart;

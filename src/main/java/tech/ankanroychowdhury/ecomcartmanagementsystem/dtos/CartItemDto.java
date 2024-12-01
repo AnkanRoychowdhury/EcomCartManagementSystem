@@ -5,7 +5,6 @@ import lombok.*;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.CartItem;
 
 import java.io.Serializable;
-import java.util.Date;
 
 /**
  * DTO for {@link CartItem}

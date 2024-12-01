@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.*;
 
 import java.io.Serializable;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -27,5 +26,5 @@ public class CartDto implements Serializable {
     @Valid
     @NotNull
     @Size(message = "Cart must have at least one item", min = 1)
-    List<CartItemDto> cartItems;
+    transient List<CartItemDto> cartItems;
 }

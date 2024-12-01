@@ -3,9 +3,6 @@ package tech.ankanroychowdhury.ecomcartmanagementsystem.controllers;
 import com.sun.jdi.request.DuplicateRequestException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.RedisSystemException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +12,7 @@ import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.ResponseDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.UpdateCartDto;
-import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.Cart;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.services.CartService;
-
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -28,6 +22,8 @@ public class CartController {
 
     private final CartService cartService;
     private final CartToCartDtoAdapter cartToCartDtoAdapter;
+    private static final String CART_NOT_FOUND_MSG = "Cart not found";
+
 
     public CartController(CartService cartService, CartToCartDtoAdapter cartToCartDtoAdapter) {
         this.cartService = cartService;
@@ -37,7 +33,7 @@ public class CartController {
     @PostMapping
     public ResponseEntity<ResponseDto<CartDto>> saveCart(@Valid @RequestBody CartDto cartDto) {
         try {
-            Object savedCart;
+            CartDto savedCart;
             if(cartDto.getUserId() == null) {
                 savedCart = this.cartService.saveCartInRedis(cartDto);
             }else {
@@ -47,7 +43,7 @@ public class CartController {
                     ResponseDto.<CartDto>builder()
                     .status(HttpStatus.OK)
                     .message("Cart created successfully")
-                    .data((CartDto) savedCart)
+                    .data(savedCart)
                     .errors(null)
                     .build(),
                     HttpStatus.OK
@@ -90,13 +86,13 @@ public class CartController {
                     .message("Cart retrieved successfully")
                     .data(cartDto)
                     .build();
-            return ResponseEntity.ok(response);
+            return ResponseEntity.status(HttpStatus.OK).body(response);
         }
         catch (EntityNotFoundException e) {
             // Handle exceptions (e.g., cart not found)
             ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
                     .status(HttpStatus.NOT_FOUND)
-                    .message("Cart not found")
+                    .message(CART_NOT_FOUND_MSG)
                     .errors(List.of(e.getMessage()))
                     .build();
 
@@ -104,7 +100,6 @@ public class CartController {
         }
         catch (Exception e) {
             // Handle general exceptions
-            e.printStackTrace();
             ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .message("An error occurred while retrieving the cart")
@@ -130,7 +125,7 @@ public class CartController {
             // Handle exceptions (e.g., cart not found)
             ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
                     .status(HttpStatus.NOT_FOUND)
-                    .message("Cart not found")
+                    .message(CART_NOT_FOUND_MSG)
                     .errors(List.of(e.getMessage()))
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
@@ -162,7 +157,7 @@ public class CartController {
             // Handle exceptions (e.g., cart not found)
             ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
                     .status(HttpStatus.NOT_FOUND)
-                    .message("Cart not found")
+                    .message(CART_NOT_FOUND_MSG)
                     .errors(List.of(e.getMessage()))
                     .build();
 
@@ -194,7 +189,7 @@ public class CartController {
             // Handle exceptions (e.g., cart not found)
             ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
                     .status(HttpStatus.NOT_FOUND)
-                    .message("Cart not found")
+                    .message(CART_NOT_FOUND_MSG)
                     .errors(List.of(e.getMessage()))
                     .build();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);

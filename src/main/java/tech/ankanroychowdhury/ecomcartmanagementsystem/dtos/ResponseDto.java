@@ -14,6 +14,6 @@ import java.util.List;
 public class ResponseDto<T> implements Serializable {
     private HttpStatus status;
     private String message;
-    private T data;
+    private transient T data;
     private List<String> errors;
 }
