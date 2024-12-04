@@ -14,6 +14,7 @@ import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.CartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.ResponseDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.UpdateCartDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.services.CartService;
+import tech.ankanroychowdhury.ecomcartmanagementsystem.utils.ResponseBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,218 +36,80 @@ public class CartController {
     @PostMapping
     public ResponseEntity<ResponseDto<CartDto>> saveCart(@Valid @RequestBody CartDto cartDto) {
         try {
-            CartDto savedCart;
-            if(cartDto.getUserId() == null || cartDto.getUserId().isEmpty()) {
-                savedCart = this.cartService.saveCartInRedis(cartDto);
-            }else {
-                savedCart = this.cartService.saveCart(cartDto);
-            }
-            return new ResponseEntity<>(
-                    ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.OK)
-                    .message("Cart created successfully")
-                    .data(savedCart)
-                    .errors(null)
-                    .build(),
-                    HttpStatus.OK
-            );
-        }catch(Exception e) {
-            return new ResponseEntity<>(
-                    ResponseDto.<CartDto>builder()
-                            .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .message("Unable to create cart")
-                            .data(null)
-                            .errors(List.of(e.getMessage()))
-                            .build(),
-                    HttpStatus.OK
-            );
+            CartDto savedCart = (cartDto.getUserId() == null || cartDto.getUserId().isEmpty())
+                    ? cartService.saveCartInRedis(cartDto)
+                    : cartService.saveCart(cartDto);
+            return ResponseBuilder.success("Cart created successfully", savedCart);
+        } catch (Exception e) {
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create cart", List.of(e.getMessage()));
         }
     }
 
     @PostMapping("/merge/{userId}")
-    public ResponseEntity<ResponseDto<CartDto>> mergeCart(@RequestParam String cartId, @PathVariable String userId) throws Exception{
+    public ResponseEntity<ResponseDto<CartDto>> mergeCart(@RequestParam String cartId, @PathVariable String userId) {
         try {
-            CartDto guestCart = this.cartService.getCartFromRedis(cartId);
+            CartDto guestCart = cartService.getCartFromRedis(cartId);
             guestCart.setUserId(userId);
-            CartDto mergedCart = this.cartService.saveCart(guestCart);
-            redisTemplate.opsForValue().getAndDelete("cart:guest:"+cartId);
-            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.CREATED)
-                    .message("Successful merging cart")
-                    .errors(new ArrayList<>())
-                    .data(mergedCart)
-                    .build();
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-        }catch (RedisCommandExecutionException e) {
-            // Handle exceptions (e.g., cart not found)
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.NOT_FOUND)
-                    .message(CART_NOT_FOUND_MSG)
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+            CartDto mergedCart = cartService.saveCart(guestCart);
+            redisTemplate.opsForValue().getAndDelete("cart:guest:" + cartId);
+            return ResponseBuilder.success("Successfully merged cart", mergedCart);
+        } catch (RedisCommandExecutionException e) {
+            return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to merge cart", List.of(e.getMessage()));
         }
     }
 
     @GetMapping
-    public ResponseEntity<ResponseDto<CartDto>> getCartById(@RequestParam String cartId) throws Exception {
+    public ResponseEntity<ResponseDto<CartDto>> getCartById(@RequestParam String cartId) {
         try {
-            // fetch cart from redis for guest user
-            CartDto guestCart = this.cartService.getCartFromRedis(cartId);
-            // Fetch the cart by ID
-            CartDto cartDto = guestCart != null ? guestCart : this.cartService.getCartById(cartId);
-
-            // Build success response
-            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.OK)
-                    .message("Cart retrieved successfully")
-                    .data(cartDto)
-                    .build();
-
-            return ResponseEntity.ok(response);
-        }
-        catch(RedisCommandExecutionException e){
-            CartDto cartDto = this.cartService.getCartById(cartId);
-            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.OK)
-                    .message("Cart retrieved successfully")
-                    .data(cartDto)
-                    .build();
-            return ResponseEntity.status(HttpStatus.OK).body(response);
-        }
-        catch (EntityNotFoundException e) {
-            // Handle exceptions (e.g., cart not found)
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.NOT_FOUND)
-                    .message(CART_NOT_FOUND_MSG)
-                    .errors(List.of(e.getMessage()))
-                    .build();
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        }
-        catch (Exception e) {
-            // Handle general exceptions
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .message("An error occurred while retrieving the cart")
-                    .errors(List.of(e.getMessage()))
-                    .build();
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            CartDto guestCart = cartService.getCartFromRedis(cartId);
+            CartDto cartDto = (guestCart != null) ? guestCart : cartService.getCartById(cartId);
+            return ResponseBuilder.success("Cart retrieved successfully", cartDto);
+        } catch (EntityNotFoundException e) {
+            return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while retrieving the cart", List.of(e.getMessage()));
         }
     }
 
     @PatchMapping("/items")
     public ResponseEntity<ResponseDto<CartDto>> addItemsToCart(@RequestParam String cartId, @Valid @RequestBody List<CartItemDto> cartItems) {
         try {
-            CartDto cartDto = this.cartService.addItemsToCart(cartId, cartItems);
-            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.OK)
-                    .message("Successfully Added items into the cart")
-                    .data(cartDto)
-                    .build();
-            return ResponseEntity.ok(response);
-        }
-        catch (EntityNotFoundException e) {
-            // Handle exceptions (e.g., cart not found)
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.NOT_FOUND)
-                    .message(CART_NOT_FOUND_MSG)
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        }
-        catch (Exception e) {
-            // Handle general exceptions
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .message("An error occurred while adding items into the cart")
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            CartDto updatedCart = cartService.addItemsToCart(cartId, cartItems);
+            return ResponseBuilder.success("Successfully added items to cart", updatedCart);
+        } catch (EntityNotFoundException e) {
+            return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while adding items to the cart", List.of(e.getMessage()));
         }
     }
 
     @DeleteMapping
-    public ResponseEntity<ResponseDto<CartDto>> deleteCart(@RequestParam String cartId) {
+    public ResponseEntity<ResponseDto<Void>> deleteCart(@RequestParam String cartId) {
         try {
-            // Fetch the cart by ID
-            this.cartService.deleteCart(cartId);
-            // Build success response
-            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.OK)
-                    .message("Cart deleted successfully")
-                    .build();
-            return ResponseEntity.ok(response);
-        }
-        catch (EntityNotFoundException e) {
-            // Handle exceptions (e.g., cart not found)
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.NOT_FOUND)
-                    .message(CART_NOT_FOUND_MSG)
-                    .errors(List.of(e.getMessage()))
-                    .build();
-
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        }
-        catch (Exception e) {
-            // Handle general exceptions
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .message("An error occurred while deleting the cart")
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            cartService.deleteCart(cartId);
+            return ResponseBuilder.success("Cart deleted successfully", null);
+        } catch (EntityNotFoundException e) {
+            return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while deleting the cart", List.of(e.getMessage()));
         }
     }
 
     @PutMapping
-    public ResponseEntity<ResponseDto<CartDto>> updateCart(@RequestParam String cartId, @Valid @RequestBody UpdateCartDto updateCartDto){
+    public ResponseEntity<ResponseDto<CartDto>> updateCart(@RequestParam String cartId, @Valid @RequestBody UpdateCartDto updateCartDto) {
         try {
-            CartDto cartDto = this.cartService.updateCart(cartId, updateCartDto);
-            ResponseDto<CartDto> response = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.OK)
-                    .message("Successfully updated the cart")
-                    .data(cartDto)
-                    .errors(new ArrayList<>())
-                    .build();
-            return ResponseEntity.ok(response);
-        }
-        catch (EntityNotFoundException e) {
-            // Handle exceptions (e.g., cart not found)
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.NOT_FOUND)
-                    .message(CART_NOT_FOUND_MSG)
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        }
-        catch (DuplicateRequestException e) {
-            // Handle exceptions (e.g., cart not found)
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.ACCEPTED)
-                    .message("Nothing new to update")
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(errorResponse);
-        }
-        catch (IllegalArgumentException e) {
-            // Handle exceptions (e.g., Bad request)
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.BAD_REQUEST)
-                    .message("Items info is invalid")
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }
-        catch (Exception e) {
-            // Handle general exceptions
-            ResponseDto<CartDto> errorResponse = ResponseDto.<CartDto>builder()
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .message("An error occurred while updating cart")
-                    .errors(List.of(e.getMessage()))
-                    .build();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            CartDto updatedCart = cartService.updateCart(cartId, updateCartDto);
+            return ResponseBuilder.success("Successfully updated the cart", updatedCart);
+        } catch (EntityNotFoundException e) {
+            return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
+        } catch (DuplicateRequestException e) {
+            return ResponseBuilder.error(HttpStatus.ACCEPTED, "Nothing new to update", List.of(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseBuilder.error(HttpStatus.BAD_REQUEST, "Items info is invalid", List.of(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while updating cart", List.of(e.getMessage()));
         }
     }
 }
