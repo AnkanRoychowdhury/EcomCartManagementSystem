@@ -1,5 +1,6 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.jdi.request.DuplicateRequestException;
 import io.lettuce.core.RedisCommandExecutionException;
@@ -17,6 +18,8 @@ import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.UpdateCartDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.dtos.UpdateCartItemDto;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.Cart;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.CartItem;
+import tech.ankanroychowdhury.ecomcartmanagementsystem.exceptions.CartNotFoundException;
+import tech.ankanroychowdhury.ecomcartmanagementsystem.exceptions.RedisOperationException;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.repositories.CartRepository;
 
 import java.time.Duration;
@@ -35,15 +38,13 @@ public class CartServiceImpl implements CartService {
     private final CartItemDtoToCartItemAdapter cartItemDtoToCartItemAdapter;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
-    private boolean isUpdated = false;
 
     public CartServiceImpl(CartRepository cartRepository,
                            CartDtoToCartAdapter cartAdapter,
                            CartToCartDtoAdapter cartToCartDtoAdapter,
                            CartItemDtoToCartItemAdapter cartItemDtoToCartItemAdapter,
                            RedisTemplate<String, Object> redisTemplate,
-                           ObjectMapper objectMapper
-    ) {
+                           ObjectMapper objectMapper) {
         this.cartRepository = cartRepository;
         this.cartAdapter = cartAdapter;
         this.cartToCartDtoAdapter = cartToCartDtoAdapter;
@@ -53,139 +54,133 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
-    public CartDto saveCart(CartDto cartDto) throws Exception {
-        try {
-            Cart cart = this.cartAdapter.convertToCartFromCartDto(cartDto);
-            return this.cartToCartDtoAdapter.convertToCartDto(this.cartRepository.save(cart));
-        }catch(Exception e) {
-            throw new Exception(
-                    e.getMessage(),
-                    e.getCause()
-            );
-        }
+    public CartDto saveCart(CartDto cartDto) {
+        Cart cart = this.cartAdapter.convertToCartFromCartDto(cartDto);
+        return this.cartToCartDtoAdapter.convertToCartDto(cartRepository.save(cart));
     }
 
     @Override
     public CartDto getCartById(String cartId) {
-        Cart cart = findCartById(cartId);
-        return this.cartToCartDtoAdapter.convertToCartDto(cart);
+        return cartToCartDtoAdapter.convertToCartDto(findCartById(cartId));
     }
 
     @Override
-    public CartDto addItemsToCart(String cartId, List<CartItemDto> cartItemsDto) throws Exception {
-        try {
-            Cart cart = findCartById(cartId);
-            List<CartItem> cartItems = this.cartItemDtoToCartItemAdapter.convertToCartItemListFromCartItemsDto(cartItemsDto, cart);
-            cart.getCartItems().addAll(cartItems);
-            return this.cartToCartDtoAdapter.convertToCartDto(this.cartRepository.save(cart));
-        }catch(Exception e) {
-            e.printStackTrace();
-            throw new Exception(e.getMessage(), e.getCause());
-        }
+    public CartDto addItemsToCart(String cartId, List<CartItemDto> cartItemsDto) {
+        Cart cart = findCartById(cartId);
+        List<CartItem> cartItems = cartItemDtoToCartItemAdapter.convertToCartItemListFromCartItemsDto(cartItemsDto, cart);
+        cart.getCartItems().addAll(cartItems);
+        return cartToCartDtoAdapter.convertToCartDto(cartRepository.save(cart));
     }
 
     @Override
     public void deleteCart(String cartId) {
         Cart cart = findCartById(cartId);
-        this.cartRepository.delete(cart);
+        cartRepository.delete(cart);
     }
 
     @Override
     @Transactional
-    public CartDto updateCart(String cartId, UpdateCartDto updateCartDto) throws Exception {
+    public CartDto updateCart(String cartId, UpdateCartDto updateCartDto) {
         Cart existingCart = findCartById(cartId);
-        String userIdToUpdate = updateCartDto.getUserId();
-        if(userIdToUpdate != null && !existingCart.getUserId().equals(userIdToUpdate)){
-            existingCart.setUserId(userIdToUpdate);
-            isUpdated = true;
-        }
-        List<UpdateCartItemDto> updateCartItemDto = updateCartDto.getCartItems();
-        List<CartItem> existingCartCartItems = existingCart.getCartItems();
-        List<CartItem> toUpdateCartItems = this.cartItemDtoToCartItemAdapter.fromUpdateCartItemDto(updateCartItemDto, existingCart);
-        List<CartItem> updatedCartItems = matchAndUpdateExistingCartItems(toUpdateCartItems, existingCartCartItems);
-        if(!isUpdated) throw new DuplicateRequestException("Cart is already updated");
-        existingCart.setCartItems(updatedCartItems);
-        Cart cart = this.cartRepository.save(existingCart);
-        return this.cartToCartDtoAdapter.convertToCartDto(cart);
+        boolean isUpdated = updateCartFields(existingCart, updateCartDto);
+        if (!isUpdated) throw new DuplicateRequestException("Cart is already updated");
+        Cart updatedCart = cartRepository.save(existingCart);
+        return cartToCartDtoAdapter.convertToCartDto(updatedCart);
     }
 
     @Override
-    public CartDto saveCartInRedis(CartDto cartDto) throws Exception {
-        try {
-            return saveCartInRedisIn(cartDto);
-        }catch (Exception e) {
-            throw new Exception(e.getMessage(), e.getCause());
-        }
-    }
-
-    private CartDto saveCartInRedisIn(CartDto cartDto) throws Exception {
-        // Generate a unique Cart ID if not already set
-        if (cartDto.getCartId() == null || cartDto.getCartId().isEmpty()) {
-            cartDto.setCartId(UUID.randomUUID().toString());
-        }
-        String cartKey = "cart:guest:" + cartDto.getCartId();
-
-        // Serialize and save the CartDto object in Redis
-        String serializedCart = objectMapper.writeValueAsString(cartDto);
-        redisTemplate.opsForValue().set(cartKey, serializedCart, Duration.ofHours(1));
+    public CartDto saveCartInRedis(CartDto cartDto) {
+        String cartId = generateCartId();
+        String cartKey = generateRedisKey(cartId);
+        cartDto.setCartId(cartId);
+        saveToRedis(cartKey, cartDto);
         return cartDto;
     }
 
-    private CartDto getCartFromRedisIn(String cartId) throws Exception {
-        String cartKey = "cart:guest:" + cartId;
-        // Retrieve the serialized JSON string from Redis
-        String serializedCart = (String) redisTemplate.opsForValue().get(cartKey);
-        if (serializedCart == null) {
-            throw new RedisCommandExecutionException("Cart not found in Redis with ID: " + cartId);
-        }
-        // Deserialize the JSON string back into a CartDto object
-        return objectMapper.readValue(serializedCart, CartDto.class);
-    }
-
     @Override
-    public CartDto getCartFromRedis(String cartId) throws Exception {
-        return getCartFromRedisIn(cartId);
+    public CartDto getCartFromRedis(String cartId) throws RedisOperationException, JsonProcessingException{
+        String cartKey = generateRedisKey(cartId);
+        return retrieveFromRedis(cartKey);
     }
 
-    private List<CartItem> matchAndUpdateExistingCartItems(List<CartItem> toUpdateCartItems, List<CartItem> existingCartItems) {
-        // Create a map for quick lookup of existing items by productId
+    // --- PRIVATE METHODS ---
+    private Cart findCartById(String cartId) {
+        Cart cart = this.cartRepository.findCartByCartId(cartId);
+        if (cart == null) {
+            throw new CartNotFoundException("Cart not found with ID: " + cartId);
+        }
+        return cart;
+    }
+
+    private boolean updateCartFields(Cart existingCart, UpdateCartDto updateCartDto) {
+        boolean isUpdated = false;
+
+        // Update User ID
+        if (updateCartDto.getUserId() != null && !updateCartDto.getUserId().equals(existingCart.getUserId())) {
+            existingCart.setUserId(updateCartDto.getUserId());
+            isUpdated = true;
+        }
+
+        // Update Cart Items
+        List<CartItem> toUpdateCartItems = cartItemDtoToCartItemAdapter.fromUpdateCartItemDto(updateCartDto.getCartItems(), existingCart);
+        isUpdated |= updateCartItems(existingCart.getCartItems(), toUpdateCartItems);
+
+        return isUpdated;
+    }
+
+    private boolean updateCartItems(List<CartItem> existingCartItems, List<CartItem> toUpdateCartItems) {
         Map<String, CartItem> existingItemsMap = existingCartItems.stream()
                 .collect(Collectors.toMap(CartItem::getProductId, item -> item));
 
-        // Iterate through the toUpdateCartItems
+        boolean isUpdated = false;
+
         for (CartItem updateItem : toUpdateCartItems) {
-            String productId = updateItem.getProductId();
+            CartItem existingItem = existingItemsMap.get(updateItem.getProductId());
 
-            // If the product exists in the current cart, update it
-            if (existingItemsMap.containsKey(productId)) {
-                CartItem existingItem = existingItemsMap.get(productId);
-
-                // Update quantity if different
-                if (updateItem.getQuantity() > 0 && updateItem.getQuantity() != existingItem.getQuantity()) {
+            if (existingItem != null) {
+                // Update existing item
+                if (updateItem.getQuantity() != existingItem.getQuantity()) {
                     existingItem.setQuantity(updateItem.getQuantity());
                     isUpdated = true;
                 }
-
-                // Update price if different
-                if (updateItem.getPrice() > 0.0 && Double.compare(updateItem.getPrice(), existingItem.getPrice()) != 0) {
+                if (updateItem.getPrice()!= existingItem.getPrice()) {
                     existingItem.setPrice(updateItem.getPrice());
                     isUpdated = true;
                 }
             } else {
-                // If the product is new, add it to the map
-                existingItemsMap.put(productId, updateItem);
+                // Add new item
+                existingItemsMap.put(updateItem.getProductId(), updateItem);
                 isUpdated = true;
             }
         }
-        // Return the updated list of items
-        return new ArrayList<>(existingItemsMap.values());
+
+        existingCartItems.clear();
+        existingCartItems.addAll(existingItemsMap.values());
+        return isUpdated;
     }
 
-    private Cart findCartById(String cartId) {
-        Cart cart = this.cartRepository.findCartByCartId(cartId);
-        if(cart == null) {
-            throw new EntityNotFoundException("Cart not found with ID: " + cartId);
+    private void saveToRedis(String key, CartDto cartDto) {
+        try {
+            String serializedCart = objectMapper.writeValueAsString(cartDto);
+            redisTemplate.opsForValue().set(key, serializedCart, Duration.ofHours(1));
+        } catch (Exception e) {
+            throw new RedisOperationException("Error saving cart to Redis", e);
         }
-        return cart;
+    }
+
+    private CartDto retrieveFromRedis(String key) throws JsonProcessingException {
+        String serializedCart = (String) redisTemplate.opsForValue().get(key);
+        if (serializedCart == null) {
+            throw new CartNotFoundException("Cart not found in Redis with key: " + key);
+        }
+        return objectMapper.readValue(serializedCart, CartDto.class);
+    }
+
+    private String generateRedisKey(String cartId) {
+        return "cart:guest:" + (cartId != null ? cartId : UUID.randomUUID());
+    }
+
+    private String generateCartId() {
+        return UUID.randomUUID().toString();
     }
 }
