@@ -1,6 +1,7 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.dtos;
 
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -13,6 +14,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @NoArgsConstructor
+@Schema(hidden = true)
 public class UpdateCartItemDto implements Serializable {
     String productId;
 

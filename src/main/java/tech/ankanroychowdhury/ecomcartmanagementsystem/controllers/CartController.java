@@ -2,6 +2,11 @@ package tech.ankanroychowdhury.ecomcartmanagementsystem.controllers;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.sun.jdi.request.DuplicateRequestException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -17,16 +22,19 @@ import tech.ankanroychowdhury.ecomcartmanagementsystem.exceptions.InvalidCartOpe
 import tech.ankanroychowdhury.ecomcartmanagementsystem.exceptions.RedisOperationException;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.services.CartService;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.utils.ResponseBuilder;
+
 import java.util.List;
 
 
 @RestController
 @RequestMapping("/api/v1/carts")
+@Tag(name = "Cart Management", description = "Operations related to managing user carts")
 public class CartController {
 
     private final CartService cartService;
     private final RedisTemplate<String, Object> redisTemplate;
     private static final String CART_NOT_FOUND_MSG = "Cart not found";
+    private static final String REDIS_GENERAL_ERROR_MSG = "Redis operation failed";
 
     public CartController(CartService cartService, RedisTemplate<String, Object> redisTemplate) {
         this.cartService = cartService;
@@ -41,7 +49,7 @@ public class CartController {
                     : cartService.saveCart(cartDto);
             return ResponseBuilder.success("Cart created successfully", savedCart);
         } catch (RedisOperationException e) {
-            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "Redis operation failed", List.of(e.getMessage()));
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, REDIS_GENERAL_ERROR_MSG, List.of(e.getMessage()));
         } catch (Exception e) {
             return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create cart", List.of(e.getMessage()));
         }
@@ -58,7 +66,7 @@ public class CartController {
         } catch (CartNotFoundException e) {
             return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
         } catch (RedisOperationException e) {
-            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "Redis operation failed", List.of(e.getMessage()));
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, REDIS_GENERAL_ERROR_MSG, List.of(e.getMessage()));
         } catch (Exception e) {
             return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to merge cart", List.of(e.getMessage()));
         }
@@ -72,7 +80,7 @@ public class CartController {
         } catch (CartNotFoundException e) {
             return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
         } catch (RedisOperationException e) {
-            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "Redis operation failed", List.of(e.getMessage()));
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, REDIS_GENERAL_ERROR_MSG, List.of(e.getMessage()));
         } catch (Exception e) {
             return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while retrieving the cart", List.of(e.getMessage()));
         }

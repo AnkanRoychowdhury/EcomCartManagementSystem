@@ -1,5 +1,6 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.entities;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
@@ -17,6 +18,7 @@ import java.util.Date;
 @Setter
 @EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
+@Schema(name = "CartItem", description = "Represents item in the cart")
 public class CartItem implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +36,7 @@ public class CartItem implements Serializable {
 
     @ManyToOne
     @JoinColumn(name = "cart_id")
+    @Schema(hidden = true)
     private Cart cart;
 
     @Column(nullable = false)

@@ -1,5 +1,6 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.dtos;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.*;
 import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.CartItem;
@@ -14,6 +15,7 @@ import java.io.Serializable;
 @RequiredArgsConstructor
 @Getter
 @Setter
+@Schema(hidden = true)
 public class CartItemDto implements Serializable {
 
     Long itemId;
