@@ -79,8 +79,6 @@ public class CartController {
             return ResponseBuilder.success("Cart retrieved successfully", cartDto);
         } catch (CartNotFoundException e) {
             return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
-        } catch (RedisOperationException e) {
-            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, REDIS_GENERAL_ERROR_MSG, List.of(e.getMessage()));
         } catch (Exception e) {
             return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while retrieving the cart", List.of(e.getMessage()));
         }

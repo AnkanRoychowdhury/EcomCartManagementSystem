@@ -4,12 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Positive;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import java.io.Serializable;
-import java.util.Date;
 
 @Builder
 @NoArgsConstructor
@@ -19,7 +15,7 @@ import java.util.Date;
 @EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @Schema(name = "CartItem", description = "Represents item in the cart")
-public class CartItem implements Serializable {
+public class CartItem extends Auditable implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -38,14 +34,4 @@ public class CartItem implements Serializable {
     @JoinColumn(name = "cart_id")
     @Schema(hidden = true)
     private Cart cart;
-
-    @Column(nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }
