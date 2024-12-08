@@ -67,9 +67,11 @@ public class CartServiceImpl implements CartService {
     }
 
     @Override
+    @Transactional
     public void deleteCart(String cartId) {
-        Cart cart = findCartById(cartId);
-        cartRepository.delete(cart);
+        Cart existingCart = findCartById(cartId);
+        existingCart.setActive(false);
+        this.cartRepository.save(existingCart);
     }
 
     @Override
@@ -99,7 +101,7 @@ public class CartServiceImpl implements CartService {
 
     // --- PRIVATE METHODS ---
     private Cart findCartById(String cartId) {
-        Cart cart = this.cartRepository.findCartByCartId(cartId);
+        Cart cart = this.cartRepository.findCartByCartIdAndActiveIsTrue(cartId);
         if (cart == null) {
             throw new CartNotFoundException("Cart not found with ID: " + cartId);
         }

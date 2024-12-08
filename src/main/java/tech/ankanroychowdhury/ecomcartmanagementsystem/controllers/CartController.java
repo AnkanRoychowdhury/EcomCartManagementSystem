@@ -1,13 +1,7 @@
 package tech.ankanroychowdhury.ecomcartmanagementsystem.controllers;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.sun.jdi.request.DuplicateRequestException;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
@@ -75,7 +69,7 @@ public class CartController {
     @GetMapping
     public ResponseEntity<ResponseDto<CartDto>> getCartById(@RequestParam String cartId) {
         try {
-            CartDto cartDto = findCartByIdFromRedisOrDb(cartId);
+            CartDto cartDto = this.cartService.getCartById(cartId);
             return ResponseBuilder.success("Cart retrieved successfully", cartDto);
         } catch (CartNotFoundException e) {
             return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
@@ -84,21 +78,15 @@ public class CartController {
         }
     }
 
-    private CartDto findCartByIdFromRedisOrDb(String cartId) throws CartNotFoundException, RedisOperationException, JsonProcessingException {
-        // Attempt to fetch from Redis
-        CartDto redisCart = this.cartService.getCartFromRedis(cartId);
-        // If Redis fetch fails or returns null, fetch from DB
-        if (redisCart == null) {
-            return fetchCartFromDb(cartId);
-        }
-        return redisCart;
-    }
-
-    private CartDto fetchCartFromDb(String cartId) throws CartNotFoundException {
+    @GetMapping("/guest")
+    public ResponseEntity<ResponseDto<CartDto>> getGuestCart(@RequestParam String cartId) {
         try {
-            return cartService.getCartById(cartId);
-        } catch (EntityNotFoundException e) {
-            throw new CartNotFoundException("Cart with ID " + cartId + " not found in the database");
+            CartDto cartDto = this.cartService.getCartFromRedis(cartId);
+            return ResponseBuilder.success("Cart retrieved successfully", cartDto);
+        } catch (CartNotFoundException e) {
+            return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseBuilder.error(HttpStatus.INTERNAL_SERVER_ERROR, "An error occurred while retrieving the cart", List.of(e.getMessage()));
         }
     }
 
@@ -120,7 +108,7 @@ public class CartController {
     @DeleteMapping
     public ResponseEntity<ResponseDto<Void>> deleteCart(@RequestParam String cartId) {
         try {
-            cartService.deleteCart(cartId);
+            this.cartService.deleteCart(cartId);
             return ResponseBuilder.success("Cart deleted successfully", null);
         } catch (CartNotFoundException e) {
             return ResponseBuilder.error(HttpStatus.NOT_FOUND, CART_NOT_FOUND_MSG, List.of(e.getMessage()));

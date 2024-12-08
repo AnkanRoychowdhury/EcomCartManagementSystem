@@ -6,5 +6,5 @@ import tech.ankanroychowdhury.ecomcartmanagementsystem.entities.Cart;
 
 @Repository
 public interface CartRepository extends JpaRepository<Cart, Long> {
-    Cart findCartByCartId(String cartId);
+    Cart findCartByCartIdAndActiveIsTrue(String cartId);
 }
