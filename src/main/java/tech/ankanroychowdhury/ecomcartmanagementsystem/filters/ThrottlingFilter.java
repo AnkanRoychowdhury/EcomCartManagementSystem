@@ -18,7 +18,7 @@ public class ThrottlingFilter implements Filter {
 
     private Bucket createNewBucket() {
         return Bucket.builder()
-                .addLimit(limit -> limit.capacity(5).refillGreedy(5, Duration.ofMinutes(1)))
+                .addLimit(limit -> limit.capacity(50).refillGreedy(50, Duration.ofMinutes(1)))
                 .build();
     }
 

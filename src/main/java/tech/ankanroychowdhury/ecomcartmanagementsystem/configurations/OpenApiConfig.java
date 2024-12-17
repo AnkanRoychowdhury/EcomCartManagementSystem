@@ -18,19 +18,5 @@ public class OpenApiConfig {
                 .description("API documentation for Cart Management System")
                 .version("1.0.0"));
     }
-
-    @Bean
-    public OpenApiCustomizer replaceDtosWithEntities() {
-        return openApi -> {
-            Components components = openApi.getComponents();
-            // Replace specific DTO schemas with entity schemas
-            components.getSchemas().remove("CartDto");
-            components.getSchemas().remove("CartItemDto");
-            components.getSchemas().remove("UpdateCartDto");
-            components.getSchemas().remove("UpdateCartItemDto");
-            components.getSchemas().remove("ResponseDtoCartDto");
-            components.getSchemas().remove("ResponseDtoVoid");
-        };
-    }
 }
 
