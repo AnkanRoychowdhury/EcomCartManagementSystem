@@ -2,7 +2,7 @@ spring:
   application:
     name: EcomCartManagementSystem
   profiles:
-    active: ${SPRING_ACTIVE_PROFILE}
+    active: ${SPRING_ACTIVE_PROFILE:dev}
   jpa:
     hibernate:
       ddl-auto: validate
